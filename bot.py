@@ -187,6 +187,24 @@ async def activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.set_premium(target_id, True)
     await update.message.reply_text(f"تم تفعيل الاشتراك للمستخدم {target_id} ✅")
 
+async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    rows = db.get_usage_report()
+    if not rows:
+        await update.message.reply_text("لا يوجد مستخدمين بعد.")
+        return
+
+    total_users = len(rows)
+    total_requests = sum(r[2] for r in rows)
+
+    lines = [f"📊 تقرير الاستخدام\n\nعدد المستخدمين: {total_users}\nمجموع الطلبات: {total_requests}\n"]
+    for user_id, is_premium, requests in rows:
+        badge = "⭐️" if is_premium else ""
+        lines.append(f"{badge} {user_id} — {requests} طلب")
+
+    await update.message.reply_text("\n".join(lines))
 
 
 async def send_limit_reached(update: Update):
@@ -292,6 +310,7 @@ def main():
     app.add_handler(CommandHandler("upgrade", upgrade))
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("activate", activate))
+    app.add_handler(CommandHandler("report", report))
 
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
