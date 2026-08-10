@@ -40,7 +40,7 @@ FREE_DAILY_LIMIT = 5
 MODEL = "claude-sonnet-4-5"  # عدّل لأي موديل تفضله
 
 claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-db = Database("bot_data.db")
+db = Database("/data/bot_data.db")
 
 # نخزن آخر محتوى رفعه كل مستخدم عشان نولّد منه أسئلة لاحقًا
 last_content_cache: dict[int, str] = {}
