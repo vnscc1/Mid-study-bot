@@ -166,6 +166,29 @@ async def upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
+async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"رقمك: {update.effective_user.id}")
+
+
+async def activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    if not context.args:
+        await update.message.reply_text("الاستخدام: /activate الرقم")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("الرقم لازم يكون أرقام بس.")
+        return
+
+    db.set_premium(target_id, True)
+    await update.message.reply_text(f"تم تفعيل الاشتراك للمستخدم {target_id} ✅")
+
+
+
 async def send_limit_reached(update: Update):
     await update.message.reply_text(
         f"وصلت الحد اليومي المجاني ({FREE_DAILY_LIMIT} طلبات). "
@@ -267,6 +290,9 @@ def main():
     app.add_handler(CommandHandler("explain", explain))
     app.add_handler(CommandHandler("quiz", quiz))
     app.add_handler(CommandHandler("upgrade", upgrade))
+    app.add_handler(CommandHandler("myid", myid))
+    app.add_handler(CommandHandler("activate", activate))
+
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
