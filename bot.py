@@ -161,7 +161,7 @@ async def upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "للاشتراك تواصل مع الدعم: @vncsc_username\n"
         "(اربط هنا بوابة الدفع اللي تفضلها لاحقًا)"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text)
 
 
 async def send_limit_reached(update: Update):
