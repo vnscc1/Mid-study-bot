@@ -95,7 +95,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"النسخة المجانية: {FREE_DAILY_LIMIT} طلبات يوميًا\n"
         "للترقية اكتب /upgrade"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text)
 
 
 async def explain(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,7 +103,7 @@ async def explain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.ensure_user(user_id)
 
     if not context.args:
-        await update.message.reply_text("اكتب المصطلح بعد الأمر، مثال:\n`/explain Broca's Area`", parse_mode="Markdown")
+        await update.message.reply_text("اكتب المصطلح بعد الأمر، مثال:\n`/explain Broca's Area`")
         return
 
     allowed, remaining = await check_and_increment_usage(user_id)
