@@ -187,6 +187,23 @@ async def activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.set_premium(target_id, True)
     await update.message.reply_text(f"تم تفعيل الاشتراك للمستخدم {target_id} ✅")
 
+async def deactivate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    if not context.args:
+        await update.message.reply_text("الاستخدام: /deactivate الرقم")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("الرقم لازم يكون أرقام بس.")
+        return
+
+    db.set_premium(target_id, False)
+    await update.message.reply_text(f"تم إلغاء الاشتراك للمستخدم {target_id} ❌")
+
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -310,6 +327,7 @@ def main():
     app.add_handler(CommandHandler("upgrade", upgrade))
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("activate", activate))
+    app.add_handler(CommandHandler("deactivate", deactivate))
     app.add_handler(CommandHandler("report", report))
 
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
