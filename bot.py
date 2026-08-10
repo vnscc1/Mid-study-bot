@@ -158,7 +158,7 @@ async def upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "- طلبات غير محدودة يوميًا\n"
         "- رفع ملفات أكبر\n"
         "- حفظ سجل الملخصات\n\n"
-        "للاشتراك تواصل مع الدعم: @vncsc_username\n"
+        "للاشتراك تواصل مع الدعم: @vncsc\n"
         "(اربط هنا بوابة الدفع اللي تفضلها لاحقًا)"
     )
     await update.message.reply_text(text)
