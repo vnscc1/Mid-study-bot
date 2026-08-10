@@ -77,3 +77,15 @@ class Database:
                 """,
                 (user_id, day),
             )
+    def get_usage_report(self):
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT u.user_id, u.is_premium, COALESCE(SUM(us.count), 0) as total_requests
+                FROM users u
+                LEFT JOIN usage us ON u.user_id = us.user_id
+                GROUP BY u.user_id
+                ORDER BY total_requests DESC
+                """
+            ).fetchall()
+            return rows
