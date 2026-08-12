@@ -383,9 +383,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_limit_reached(update)
         return
 
-    extracted_text, was_truncated = apply_content_limit(extracted_text, user_id)
-last_content_cache[user_id] = extracted_text
-
+        text, was_truncated = apply_content_limit(text, user_id)
+        last_content_cache[user_id] = text
 
     await update.message.reply_chat_action("typing")
     try:
