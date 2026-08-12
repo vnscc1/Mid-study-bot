@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-FREE_DAILY_LIMIT = 5
+FREE_DAILY_LIMIT = 3
+FREE_CHAR_LIMIT = 8000       # تقريبًا 1500-2000 كلمة
+PREMIUM_CHAR_LIMIT = 60000   # تقريبًا 15,000 كلمة
 MODEL = "claude-sonnet-4-5"  # عدّل لأي موديل تفضله
 
 claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -70,6 +72,13 @@ async def check_and_increment_usage(user_id: int) -> tuple[bool, int]:
     db.increment_usage(user_id, today)
     remaining = FREE_DAILY_LIMIT - (count + 1)
     return True, remaining
+    
+def apply_content_limit(text: str, user_id: int) -> tuple[str, bool]:
+    """يرجع (النص المقصوص, تم القص؟)"""
+    limit = PREMIUM_CHAR_LIMIT if db.is_premium(user_id) else FREE_CHAR_LIMIT
+    if len(text) > limit:
+        return text[:limit], True
+    return text, False
 
 
 def call_claude(user_message: str, system: str = MEDICAL_SYSTEM_PROMPT, max_tokens: int = 2000) -> str:
@@ -156,11 +165,13 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "🌟 *النسخة المدفوعة*\n\n"
-        "- طلبات غير محدودة يوميًا\n"
-        "- رفع ملفات أكبر\n"
-        "- حفظ سجل الملخصات\n\n"
-        "للاشتراك تواصل مع الدعم: @vncsc\n"
+        "🌟 النسخة المميزة\n\n"
+        "- طلبات غير محدودة يوميًا (بدون انتظار للغد)\n"
+        "- معالجة محاضرات أطول — حتى 15,000 كلمة من ملف PDF الواحد\n"
+        "- دعم كامل للصور (تصوير السبورة أو الكتاب)\n"
+        "- حفظ سجل كل ملخصاتك السابقة، ترجع لها متى ما تبي\n\n"
+        "بسعر بسيط يوفر عليك وقت ساعات من التلخيص اليدوي.\n\n"
+        "للاشتراك تواصل: @vncsc"
         
     )
     await update.message.reply_text(text)
@@ -262,11 +273,17 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await status_msg.edit_text("ما قدرت أستخرج نص من الملف. جرب ملف ثاني أو انسخ النص مباشرة.")
             return
 
-        last_content_cache[user_id] = extracted_text[:15000]  # حد أقصى تحسبًا لطول النص
+     text, was_truncated = apply_content_limit(text, user_id)
+last_content_cache[user_id] = text
 
         await status_msg.edit_text("جاري التلخيص...")
         summary_prompt = f"لخّص المحتوى الطبي التالي:\n\n{extracted_text[:15000]}"
         summary = call_claude(summary_prompt)
+if was_truncated and not db.is_premium(user_id):
+    await update.message.reply_text(
+        "⚠️ الملف طويل — لخّصت الجزء المسموح بالنسخة المجانية بس. "
+        "للتلخيص الكامل بدون قص، اترقّى عبر /upgrade"
+    )
 
         await status_msg.delete()
         await update.message.reply_text(summary)
@@ -285,6 +302,11 @@ pending_images: dict[int, str] = {}  # يخزن الصورة مؤقتًا لين
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     db.ensure_user(user_id)
+if not db.is_premium(user_id):
+    await update.message.reply_text(
+        "🖼️ دعم الصور متاح للمشتركين فقط.\nللترقية اكتب /upgrade"
+    )
+    return
 
     photo = update.message.photo[-1]  # أعلى جودة متاحة
     file = await photo.get_file()
@@ -361,7 +383,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_limit_reached(update)
         return
 
-    last_content_cache[user_id] = text[:15000]
+    extracted_text, was_truncated = apply_content_limit(extracted_text, user_id)
+last_content_cache[user_id] = extracted_text
+
 
     await update.message.reply_chat_action("typing")
     try:
