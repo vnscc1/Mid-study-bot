@@ -279,11 +279,11 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text("جاري التلخيص...")
         summary_prompt = f"لخّص المحتوى الطبي التالي:\n\n{extracted_text[:15000]}"
         summary = call_claude(summary_prompt)
-if was_truncated and not db.is_premium(user_id):
-    await update.message.reply_text(
-        "⚠️ الملف طويل — لخّصت الجزء المسموح بالنسخة المجانية بس. "
-        "للتلخيص الكامل بدون قص، اترقّى عبر /upgrade"
-    )
+        if was_truncated and not db.is_premium(user_id):
+           await update.message.reply_text(
+           "⚠️ الملف طويل — لخّصت الجزء المسموح بالنسخة المجانية بس. "
+           "للتلخيص الكامل بدون قص، اترقّى عبر /upgrade"
+           )
 
         await status_msg.delete()
         await update.message.reply_text(summary)
