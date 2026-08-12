@@ -277,6 +277,73 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"File handling error: {e}")
         await status_msg.edit_text("صار خطأ أثناء معالجة الملف، حاول مرة ثانية.")
 
+import base64
+
+pending_images: dict[int, str] = {}  # يخزن الصورة مؤقتًا لين يختار المستخدم
+
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    db.ensure_user(user_id)
+
+    photo = update.message.photo[-1]  # أعلى جودة متاحة
+    file = await photo.get_file()
+    file_bytes = await file.download_as_bytearray()
+    image_b64 = base64.b64encode(bytes(file_bytes)).decode("utf-8")
+
+    pending_images[user_id] = image_b64
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📝 تلخيص", callback_data="img_summarize")],
+        [InlineKeyboardButton("📖 شرح", callback_data="img_explain")],
+        [InlineKeyboardButton("📋 نسخ النص فقط", callback_data="img_transcribe")],
+    ])
+    await update.message.reply_text("وش تبيني أسوي بالصورة؟", reply_markup=keyboard)
+    
+async def handle_image_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+
+    image_b64 = pending_images.get(user_id)
+    if not image_b64:
+        await query.edit_message_text("انتهت صلاحية الصورة، أرسلها مرة ثانية.")
+        return
+
+    allowed, remaining = await check_and_increment_usage(user_id)
+    if not allowed:
+        await query.edit_message_text(f"وصلت الحد اليومي المجاني ({FREE_DAILY_LIMIT} طلبات).")
+        return
+
+    choice = query.data
+    if choice == "img_summarize":
+        prompt = "لخّص المحتوى الطبي الموجود في هذه الصورة."
+    elif choice == "img_explain":
+        prompt = "اشرح المحتوى الطبي الموجود في هذه الصورة بشكل واضح."
+    else:
+        prompt = "انسخ لي النص الموجود في هذه الصورة فقط، بدون أي تلخيص أو شرح."
+
+    await query.edit_message_text("جاري المعالجة...")
+
+    try:
+        response = claude_client.messages.create(
+            model=MODEL,
+            max_tokens=2000,
+            system=MEDICAL_SYSTEM_PROMPT,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_b64}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        result = response.content[0].text
+        await query.message.reply_text(result)
+        del pending_images[user_id]
+    except Exception as e:
+        logger.error(f"Image processing error: {e}")
+        await query.edit_message_text("صار خطأ أثناء معالجة الصورة، حاول مرة ثانية.")
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -331,6 +398,8 @@ def main():
     app.add_handler(CommandHandler("report", report))
 
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(CallbackQueryHandler(handle_image_choice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     logger.info("Bot starting...")
