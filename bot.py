@@ -302,10 +302,10 @@ pending_images: dict[int, str] = {}  # يخزن الصورة مؤقتًا لين
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     db.ensure_user(user_id)
-if not db.is_premium(user_id):
-    await update.message.reply_text(
+    if not db.is_premium(user_id):
+       await update.message.reply_text(
         "🖼️ دعم الصور متاح للمشتركين فقط.\nللترقية اكتب /upgrade"
-    )
+       )
     return
 
     photo = update.message.photo[-1]  # أعلى جودة متاحة
