@@ -273,8 +273,8 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await status_msg.edit_text("ما قدرت أستخرج نص من الملف. جرب ملف ثاني أو انسخ النص مباشرة.")
             return
 
-     text, was_truncated = apply_content_limit(text, user_id)
-last_content_cache[user_id] = text
+        extracted_text, was_truncated = apply_content_limit(extracted_text, user_id)
+        last_content_cache[user_id] = extracted_text
 
         await status_msg.edit_text("جاري التلخيص...")
         summary_prompt = f"لخّص المحتوى الطبي التالي:\n\n{extracted_text[:15000]}"
